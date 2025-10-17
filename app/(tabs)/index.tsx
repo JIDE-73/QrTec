@@ -1,98 +1,259 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { CameraView, useCameraPermissions } from "expo-camera";
+import React, { useState } from "react";
+import {
+  Alert,
+  SafeAreaView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+export default function App() {
+  const [textoMostrado, setTextoMostrado] = useState<string>(
+    "Presiona el botón para escanear QR"
+  );
+  const [mostrarScanner, setMostrarScanner] = useState<boolean>(false);
+  const [qrEscaneado, setQrEscaneado] = useState<boolean>(false);
+  const [puedeEscanear, setPuedeEscanear] = useState<boolean>(false);
+  const [permission, requestPermission] = useCameraPermissions();
 
-export default function HomeScreen() {
+  const activarScanner = () => {
+    setMostrarScanner(true);
+    setPuedeEscanear(false);
+    setQrEscaneado(false);
+
+    // Timeout de 2 segundos antes de permitir escanear
+    setTimeout(() => {
+      setPuedeEscanear(true);
+    }, 2000);
+  };
+
+  const desactivarScanner = () => {
+    setMostrarScanner(false);
+    setPuedeEscanear(false);
+  };
+
+  const handleQRScanned = ({ data }: { data: string }) => {
+    // Prevenir múltiples escaneos y verificar si puede escanear
+    if (qrEscaneado || !puedeEscanear) return;
+
+    setQrEscaneado(true);
+    setPuedeEscanear(false);
+    setTextoMostrado(`QR Escaneado: ${data}`);
+    setMostrarScanner(false);
+
+    // Mostrar alert solo una vez
+    Alert.alert("QR Escaneado Exitosamente", `Contenido: ${data}`, [
+      { text: "OK", onPress: () => console.log("Alert closed") },
+    ]);
+  };
+
+  if (!permission) {
+    return (
+      <View style={styles.container}>
+        <Text>Cargando permisos...</Text>
+      </View>
+    );
+  }
+
+  if (!permission.granted) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.textContainer}>
+          <Text style={styles.textoPrincipal}>
+            Necesitamos permiso para usar la cámara
+          </Text>
+          <TouchableOpacity style={styles.boton} onPress={requestPermission}>
+            <Text style={styles.textoBoton}>Conceder Permiso</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+      {mostrarScanner ? (
+        // Vista del Scanner QR
+        <View style={styles.scannerContainer}>
+          <CameraView
+            style={styles.camera}
+            facing="back"
+            onBarcodeScanned={
+              puedeEscanear && !qrEscaneado ? handleQRScanned : undefined
+            }
+            barcodeScannerSettings={{
+              barcodeTypes: ["qr"],
+            }}
+          />
+          <View style={styles.overlay}>
+            <View style={styles.scanFrame} />
+            <Text style={styles.scanText}>
+              {!puedeEscanear
+                ? "Preparando escáner..."
+                : qrEscaneado
+                ? "QR Escaneado"
+                : "Escanea un código QR"}
+            </Text>
+            {!puedeEscanear && (
+              <Text style={styles.textoPreparacion}>Espere un momento...</Text>
+            )}
+          </View>
+          <TouchableOpacity
+            style={[styles.boton, styles.botonCancelar]}
+            onPress={desactivarScanner}
+          >
+            <Text style={styles.textoBoton}>
+              {qrEscaneado ? "Volver" : "Cancelar"}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        // Vista principal con solo el botón de scanner
+        <View style={styles.mainContainer}>
+          {/* Texto mostrado */}
+          <View style={styles.textContainer}>
+            <Text style={styles.textoPrincipal}>{textoMostrado}</Text>
+            {textoMostrado.includes("QR Escaneado") && (
+              <Text style={styles.mensajeExito}>¡Escaneo completado!</Text>
+            )}
+          </View>
+
+          {/* Botón Scanner QR */}
+          <View style={styles.botonContainer}>
+            <TouchableOpacity
+              style={styles.botonScanner}
+              onPress={activarScanner}
+            >
+              <Text style={styles.textoBoton}>
+                {textoMostrado.includes("QR Escaneado")
+                  ? "Escanear otro QR"
+                  : "Escanear QR"}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  container: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  mainContainer: {
+    flex: 1,
+    justifyContent: "space-between",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
+  textContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  textoPrincipal: {
+    fontSize: 24,
+    fontWeight: "bold",
+    color: "#333",
+    textAlign: "center",
+    lineHeight: 32,
+    marginBottom: 10,
+  },
+  mensajeExito: {
+    fontSize: 18,
+    color: "#27ae60",
+    fontWeight: "600",
+    marginTop: 10,
+  },
+  botonContainer: {
+    padding: 40,
+  },
+  boton: {
+    paddingVertical: 15,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  botonScanner: {
+    backgroundColor: "#6c5ce7",
+    paddingVertical: 18,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  botonCancelar: {
+    backgroundColor: "#636e72",
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 25,
+  },
+  textoBoton: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "white",
+  },
+  scannerContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  camera: {
+    width: "100%",
+    height: "100%",
+  },
+  overlay: {
+    position: "absolute",
+    top: 0,
     left: 0,
-    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.3)",
+  },
+  scanFrame: {
+    width: 250,
+    height: 250,
+    borderWidth: 2,
+    borderColor: "white",
+    backgroundColor: "transparent",
+  },
+  scanText: {
+    color: "white",
+    fontSize: 18,
+    marginTop: 20,
+    fontWeight: "bold",
+    textAlign: "center",
+  },
+  textoPreparacion: {
+    color: "white",
+    fontSize: 16,
+    marginTop: 10,
+    textAlign: "center",
+    opacity: 0.8,
   },
 });
