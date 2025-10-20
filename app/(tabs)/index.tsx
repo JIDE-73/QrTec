@@ -42,13 +42,6 @@ export default function App() {
     setQrEscaneado(true);
     setTextoMostrado(`QR Escaneado: ${data}`);
     setMostrarScanner(false);
-
-    Alert.alert("QR Escaneado Exitosamente", `Contenido: ${data}`, [
-      {
-        text: "OK",
-        onPress: () => console.log("Alert cerrado"),
-      },
-    ]);
   };
 
   const handleErrorScanner = (mensaje: string) => {

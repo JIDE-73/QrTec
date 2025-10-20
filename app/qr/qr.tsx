@@ -1,6 +1,7 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import React, { useEffect, useRef, useState } from "react";
 import {
+  Alert,
   SafeAreaView,
   StatusBar,
   StyleSheet,
@@ -21,13 +22,34 @@ export default function QRScanner({
   onQRScanned,
   onClose,
   onCierreAutomatico,
-  onError,
   qrEscaneado,
 }: QRScannerProps) {
   const [puedeEscanear, setPuedeEscanear] = useState<boolean>(false);
   const [permission, requestPermission] = useCameraPermissions();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const escaneadoRef = useRef<boolean>(false);
+  const URL_ = process.env.EXPO_PUBLIC_API_URL;
+  console.log("URL de la API:", URL_);
+
+  const send = async (data: any) => {
+    try {
+      console.log("Enviando a:", `${URL_}/user/boleto`);
+      const response = await fetch(`${URL_}/user/boleto`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ numero: parseInt(data) }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}`);
+      }
+
+      Alert.alert("GUARDADO");
+    } catch (error) {
+      console.error("Error en la solicitud:", error);
+      Alert.alert("Error de conexión", "No se pudo conectar al servidor.");
+    }
+  };
 
   useEffect(() => {
     const prepararTimer = setTimeout(() => {
@@ -59,6 +81,7 @@ export default function QRScanner({
     }
 
     onQRScanned(data);
+    send(data);
   };
 
   const handleClose = () => {
