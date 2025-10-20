@@ -47,7 +47,7 @@ export default function QRScanner({
       Alert.alert("GUARDADO");
     } catch (error) {
       console.error("Error en la solicitud:", error);
-      Alert.alert("Error de conexión", "No se pudo conectar al servidor.");
+      Alert.alert("Boleto no valido", "No se encontro el boleto o no existe");
     }
   };
 
@@ -59,8 +59,8 @@ export default function QRScanner({
         if (!escaneadoRef.current) {
           onCierreAutomatico();
         }
-      }, 1000);
-    }, 1000);
+      }, 2000);
+    }, 2000);
 
     return () => {
       clearTimeout(prepararTimer);
