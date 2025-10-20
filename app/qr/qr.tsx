@@ -1,5 +1,5 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   SafeAreaView,
   StatusBar,
@@ -12,38 +12,66 @@ import {
 interface QRScannerProps {
   onQRScanned: (data: string) => void;
   onClose: () => void;
+  onCierreAutomatico: () => void;
+  onError: (mensaje: string) => void;
   qrEscaneado: boolean;
 }
 
 export default function QRScanner({
   onQRScanned,
   onClose,
+  onCierreAutomatico,
+  onError,
   qrEscaneado,
 }: QRScannerProps) {
   const [puedeEscanear, setPuedeEscanear] = useState<boolean>(false);
   const [permission, requestPermission] = useCameraPermissions();
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const escaneadoRef = useRef<boolean>(false);
 
   useEffect(() => {
-    // Timeout de 2 segundos antes de permitir escanear
-    const timer = setTimeout(() => {
+    const prepararTimer = setTimeout(() => {
       setPuedeEscanear(true);
-    }, 2000);
 
-    return () => clearTimeout(timer);
-  }, []);
+      timeoutRef.current = setTimeout(() => {
+        if (!escaneadoRef.current) {
+          onCierreAutomatico();
+        }
+      }, 1000);
+    }, 1000);
+
+    return () => {
+      clearTimeout(prepararTimer);
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [onCierreAutomatico]);
 
   const handleQRScanned = ({ data }: { data: string }) => {
-    // Prevenir múltiples escaneos y verificar si puede escanear
-    if (qrEscaneado || !puedeEscanear) return;
+    if (escaneadoRef.current || !puedeEscanear) return;
 
+    escaneadoRef.current = true;
     setPuedeEscanear(false);
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
     onQRScanned(data);
+  };
+
+  const handleClose = () => {
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    onClose();
   };
 
   if (!permission) {
     return (
       <View style={styles.container}>
-        <Text>Cargando permisos...</Text>
+        <Text style={styles.textoBlanco}>Cargando permisos...</Text>
       </View>
     );
   }
@@ -57,6 +85,12 @@ export default function QRScanner({
           </Text>
           <TouchableOpacity style={styles.boton} onPress={requestPermission}>
             <Text style={styles.textoBoton}>Conceder Permiso</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.boton, styles.botonCancelar]}
+            onPress={handleClose}
+          >
+            <Text style={styles.textoBoton}>Cancelar</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -88,18 +122,13 @@ export default function QRScanner({
               ? "QR Escaneado"
               : "Escanea un código QR"}
           </Text>
-          {!puedeEscanear && (
-            <Text style={styles.textoPreparacion}>Espere un momento...</Text>
-          )}
+          <TouchableOpacity
+            style={[styles.boton, styles.botonCancelar]}
+            onPress={handleClose}
+          >
+            <Text style={styles.textoBoton}>Cancelar</Text>
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity
-          style={[styles.boton, styles.botonCancelar]}
-          onPress={onClose}
-        >
-          <Text style={styles.textoBoton}>
-            {qrEscaneado ? "Volver" : "Cancelar"}
-          </Text>
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -145,7 +174,7 @@ const styles = StyleSheet.create({
   },
   textoPreparacion: {
     color: "white",
-    fontSize: 16,
+    fontSize: 14,
     marginTop: 10,
     textAlign: "center",
     opacity: 0.8,
@@ -164,6 +193,10 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     marginBottom: 20,
   },
+  textoBlanco: {
+    color: "white",
+    fontSize: 18,
+  },
   boton: {
     paddingVertical: 15,
     paddingHorizontal: 20,
@@ -178,10 +211,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 3.84,
     elevation: 5,
+    marginVertical: 10,
   },
   botonCancelar: {
     backgroundColor: "#636e72",
-    marginTop: 20,
     paddingVertical: 12,
     paddingHorizontal: 25,
   },

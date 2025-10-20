@@ -20,10 +20,22 @@ export default function App() {
   const activarScanner = () => {
     setMostrarScanner(true);
     setQrEscaneado(false);
+    setTextoMostrado("Presiona el botón para escanear QR");
   };
 
   const desactivarScanner = () => {
     setMostrarScanner(false);
+  };
+
+  const handleCierreAutomatico = () => {
+    setMostrarScanner(false);
+    setTextoMostrado("El escaneo fue cancelado automáticamente");
+
+    Alert.alert(
+      "Tiempo agotado",
+      "No se detectó ningún código QR. Por favor, intenta de nuevo.",
+      [{ text: "OK" }]
+    );
   };
 
   const handleQRScanned = (data: string) => {
@@ -32,8 +44,18 @@ export default function App() {
     setMostrarScanner(false);
 
     Alert.alert("QR Escaneado Exitosamente", `Contenido: ${data}`, [
-      { text: "OK", onPress: () => console.log("Alert closed") },
+      {
+        text: "OK",
+        onPress: () => console.log("Alert cerrado"),
+      },
     ]);
+  };
+
+  const handleErrorScanner = (mensaje: string) => {
+    setMostrarScanner(false);
+    setTextoMostrado(mensaje);
+
+    Alert.alert("Error", mensaje, [{ text: "OK" }]);
   };
 
   if (mostrarScanner) {
@@ -41,6 +63,8 @@ export default function App() {
       <QRScanner
         onQRScanned={handleQRScanned}
         onClose={desactivarScanner}
+        onCierreAutomatico={handleCierreAutomatico}
+        onError={handleErrorScanner}
         qrEscaneado={qrEscaneado}
       />
     );
@@ -58,20 +82,22 @@ export default function App() {
           {textoMostrado.includes("QR Escaneado") && (
             <Text style={styles.mensajeExito}>¡Escaneo completado!</Text>
           )}
-        </View>
-
-        {/* Botón Scanner QR */}
-        <View style={styles.botonContainer}>
-          <TouchableOpacity
-            style={styles.botonScanner}
-            onPress={activarScanner}
-          >
-            <Text style={styles.textoBoton}>
-              {textoMostrado.includes("QR Escaneado")
-                ? "Escanear otro QR"
-                : "Escanear QR"}
-            </Text>
-          </TouchableOpacity>
+          {textoMostrado.includes("cancelado") && (
+            <Text style={styles.mensajeError}>Tiempo agotado</Text>
+          )}
+          {/* Botón Scanner QR */}
+          <View style={styles.botonContainer}>
+            <TouchableOpacity
+              style={styles.botonScanner}
+              onPress={activarScanner}
+            >
+              <Text style={styles.textoBoton}>
+                {textoMostrado.includes("QR Escaneado")
+                  ? "Escanear otro QR"
+                  : "Escanear QR"}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </SafeAreaView>
@@ -104,6 +130,12 @@ const styles = StyleSheet.create({
   mensajeExito: {
     fontSize: 18,
     color: "#27ae60",
+    fontWeight: "600",
+    marginTop: 10,
+  },
+  mensajeError: {
+    fontSize: 18,
+    color: "#e74c3c",
     fontWeight: "600",
     marginTop: 10,
   },
